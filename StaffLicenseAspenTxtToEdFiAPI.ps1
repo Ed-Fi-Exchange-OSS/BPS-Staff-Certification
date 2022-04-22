@@ -3,7 +3,7 @@
 $Config = @{
 	CSVWorkingFile="your_file_here"
 	OAuthUrl="/oauth/token"
-	BaseApiUrl='https://edfi.mybps.org/s3v5/api'
+	BaseApiUrl='https://api.ed-fi.org/v5.3/api'
 	EdFiUrl="/data/v3"
 	EndPoint="/my-bps/staffLicenses"	
 	Key="your_key_here"
