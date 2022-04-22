@@ -1,8 +1,3 @@
-﻿
-#TODO:
-# 1) Add a log mechanism: Add Try catch
-# 1.1) Add a get to "~my-bps/staffLicenses"	to see if the endpoint exists.
-# 2) Remove the config file and use the $Config value below.
 
 # Configuration: Set appopriate values
 $Config = @{
@@ -18,7 +13,7 @@ $Config = @{
 
 Function PostToEdfi($dataJSON) 
 {
-	$GroupedRecords = $dataJSON | group StaffReference, LicenseApplicableGradeLevels,LicenseIssueDate,LicenseNumber,LicenseTitle
+    $GroupedRecords = $dataJSON | group StaffReference, LicenseApplicableGradeLevels,LicenseIssueDate,LicenseNumber,LicenseTitle
     $RepeatedRecords=($dataJSON| Measure-Object).Count -($GroupedRecords| Measure-Object).Count
 	If ($RepeatedRecords -gt 0)
 	{
@@ -137,7 +132,6 @@ Function Init()
     Start-Transcript -Path $logPath
 
     Write-Host "*** Initializing Ed-Fi > Staff Certification CSV Processing. ***" -ForegroundColor Cyan
-    Write-Host "Cheking if the required permisions exists"
 
     Write-Host "Creating a Json Object"
     Create-Json
