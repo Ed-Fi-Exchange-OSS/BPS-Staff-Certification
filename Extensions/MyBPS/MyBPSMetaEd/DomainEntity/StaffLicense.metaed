@@ -1,0 +1,58 @@
+Domain Entity StaffLicense
+    documentation "This entity represents all the licenses a staff has achieved."
+    domain entity EdFi.Staff
+        documentation "Relates the license to the Staff."
+        is part of identity
+    string LicenseNumber
+        documentation "The unique number issued by the licensing organization."
+        is part of identity
+        max length 500
+    string LicenseStateIdentifier
+        documentation "The state unique identifier for this license. Example: DESE - ACCOMP"
+        is part of identity
+        max length 500
+    string LicenseTitle
+        documentation "The title given to the license."
+        is part of identity
+        max length 500
+    string LicenseDescription
+        documentation "The description of the license."
+        is optional
+        max length 1000
+    string LicensingOrganization
+        documentation "The name of the organization issuing the license."
+        is optional
+        max length 500
+    //To review with BPS on usage: Should this be broken out to a 1 to many relationship? Or is it used as is and its important to keep this way?
+    // If broken out what do we do with these values:
+    // - Level Depends on ELL
+    // - Level Depends on Prereq. LicenseNumber
+    // - Lvl Depends on Teaching LicenseEffectiveDate
+    string LicenseApplicableGradeLevels
+        documentation "The description of the license."
+        is part of identity
+        max length 50
+    string Accomp
+        documentation "The substring of the license codes used by DESE to identify licenses."
+        is required
+        max length 10
+    // Review values with BPS:
+    //Emergency, Endorsement, Full, Initial, Initial - Extension, Initial Extension, Preliminary, Professinal, Temporary
+    descriptor LicenseStage
+        documentation "The stage this license is in."
+        is required
+    // There is already a LicenseStatus descriptor that is used for Community Providers. We should reuse these and add the extended values required.
+    // NOTE: Review with BPS if we should maintain all values.
+    // Approved, Inactive/Invalid, Inactive/Invalid: RETELL/SEI R, Invalid, Invalid: RETELL/SEI R, Licensed, Licensed: RETELL/SEI R, Surrendered
+    descriptor EdFi.LicenseStatus
+        documentation "An indication of the status of the license."
+        is required
+    date LicenseIssueDate
+        documentation "The month, day, and year on which an active license was issued."
+        is part of identity
+    date LicenseEffectiveDate
+        documentation "The month, day, and year on which a license is active or becomes effective. If empty then it is assumed its the Issue Date."
+        is optional
+    date LicenseExpirationDate
+        documentation "The month, day, and year on which a license will expire."
+        is optional

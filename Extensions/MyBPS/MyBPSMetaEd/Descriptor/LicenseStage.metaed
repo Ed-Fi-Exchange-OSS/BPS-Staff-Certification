@@ -1,0 +1,2 @@
+Descriptor LicenseStage
+    documentation "The current stage the license is in."
