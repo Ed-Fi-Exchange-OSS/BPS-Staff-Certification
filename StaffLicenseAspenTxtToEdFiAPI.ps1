@@ -100,7 +100,7 @@ Function Create-Json()
                     })
 		Write-Host "**** THERE ARE " Object.keys($dataJSON).length;
         PostToEdfi  $dataJSON
- }
+}
 
  #NormalizeGradeLevels funtion converts Grade to Grades
 

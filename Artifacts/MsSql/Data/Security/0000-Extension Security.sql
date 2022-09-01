@@ -12,7 +12,7 @@ SELECT @PrimaryRelationshipsClaimId = ResourceClaimId FROM [dbo].[ResourceClaims
 DECLARE @ManagedDescriptorsResourceClaimId INT
 SELECT @ManagedDescriptorsResourceClaimId = ResourceClaimId FROM [dbo].[ResourceClaims] WHERE ResourceName = 'managedDescriptors';
 
--- *** Transportation Claims ***
+-- *** Staff License Claims ***
 INSERT INTO [dbo].[ResourceClaims] ([DisplayName], [ResourceName] 
 								   ,[ClaimName] 
 								   ,[ParentResourceClaimId], [Application_ApplicationId])
