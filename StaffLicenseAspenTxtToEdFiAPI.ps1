@@ -9,16 +9,12 @@ $Config = @{
 	Key="your_key_here"
 	Secret="your_secret_here"
     NamesPace="uri://mybps.org"
+    logRootPath="Logs"
 }
+$totalCount = -1
 
 Function PostToEdfi($dataJSON) 
 {
-    $GroupedRecords = $dataJSON | group StaffReference, LicenseApplicableGradeLevels,LicenseIssueDate,LicenseNumber,LicenseTitle
-    $RepeatedRecords=($dataJSON| Measure-Object).Count -($GroupedRecords| Measure-Object).Count
-	If ($RepeatedRecords -gt 0)
-	{
-		Write-Host "We found $RepeatedRecords repeated  records"
-	}
     # extract the requiered parameters from the config file.
     $BaseApiUrl= $Config.BaseApiUrl
     $EdFiUrl= $Config.EdFiUrl
@@ -56,7 +52,7 @@ Function PostToEdfi($dataJSON)
 			$result = Invoke-RestMethod -Uri $uri -Method Post -Headers $Headers -Body $staffLicense
 			
 			if($i % 500 -eq 0) {
-				Write-Host "Processing $i ... "
+				Write-Host " Processing $i of $totalCount total Staff Licenses ... "   
 			}
 		}
 		catch {
@@ -80,27 +76,41 @@ Function Create-Json()
                     ForEach-Object {
                      $GradeLevel =NormalizeGradeLevels $_.'GradeLevel'
                      $LicenseStage =NormalizeStage $_.Stage
+                     $LicenseStatus =NormalizeStatus $_.LicenseStatus
+                     $LicenseDescription =NormalizeLicenseDescription $_.Description
+                     
                            [PSCustomObject]@{                           
                             StaffReference= @{staffUniqueId=[System.Security.SecurityElement]::Escape($_.StaffId)}
-                            LicenseApplicableGradeLevels =[System.Security.SecurityElement]::Escape($GradeLevel)
-                            LicenseIssueDate = [System.Security.SecurityElement]::Escape($_.IssueDate)
-                            LicenseNumber=[System.Security.SecurityElement]::Escape($_.LicenseNo)               
+                            LicenseApplicableGradeLevels =[System.Security.SecurityElement]::Escape($GradeLevel)                          
+                            LicenseNumber=[System.Security.SecurityElement]::Escape($_.LicenseNo)    
+                            LicenseIssueDate = [System.Security.SecurityElement]::Escape($_.IssueDate)           
                             LicenseStateIdentifier = [System.Security.SecurityElement]::Escape('MA')
                             LicenseExpirationDate = [System.Security.SecurityElement]::Escape($_.ExpireDate)
                             LicenseEffectiveDate= [System.Security.SecurityElement]::Escape($_.IssueDate)
 							LicenseTitle= [System.Security.SecurityElement]::Escape($_.Description) 
-                            LicenseDescription=[System.Security.SecurityElement]::Escape($_.Description)
+                            LicenseDescription=[System.Security.SecurityElement]::Escape($LicenseDescription)
                             Accomp=[System.Security.SecurityElement]::Escape($_.Accomp)
                             LicenseStageDescriptor= "$NamesPace/LicenseStageDescriptor#" + [System.Security.SecurityElement]::Escape($LicenseStage)
-                            LicenseStatusDescriptor="$NamesPace/LicenseStatusDescriptor#" + [System.Security.SecurityElement]::Escape($_.LicenseStatus)
+                            LicenseStatusDescriptor="$NamesPace/LicenseStatusDescriptor#" + [System.Security.SecurityElement]::Escape($LicenseStatus)
                             LicensingOrganization= [System.Security.SecurityElement]::Escape("org")
                           
                         }
 
                     })
-		Write-Host "**** THERE ARE " Object.keys($dataJSON).length;
-        PostToEdfi  $dataJSON
+        $totalCount = ($dataJSON.length)
+		Write-Host "**** THERE ARE " ($dataJSON.length)
+        PostToEdfi  $dataJSON		
+		
+ }
+ ##Normalize Sheltered English Immersion - Teacher    
+ Function NormalizeLicenseDescription($LicenseDescription)
+{
+    if($LicenseDescription -Contains "Sheltered Eng Immersion - Tch"){
+      $LicenseDescription  ="Sheltered English Immersion - Teacher"
+    }
+    return $LicenseDescription
 }
+
 
  #NormalizeGradeLevels funtion converts Grade to Grades
 
@@ -120,23 +130,81 @@ Function NormalizeStage($Stage)
     if($Stage -Contains "Initial - Extension"){
         $Stage ="Initial Extension"
     }
+     if($Stage -Contains "Emergency - Extension"){
+        $Stage ="Emergency"
+    }
+    
     return $Stage
+}
+
+Function NormalizeStatus($Status)
+{
+    if(($Status -Contains "Invalid: RETELL/SEI Restricted") -or ($Status -Contains "Invalid: RETELL/SEI Restricted") ){
+        $Status ="Invalid: RETELL/SEI R"
+    }
+     if(($Status -Contains "Licensed: RETELL/SEI Restricte")-or ($Status -Contains "Licensed: RETELL/SEI Restricted") ){
+        $Status ="Licensed: RETELL/SEI R"
+    }
+    if(($Status -Contains "Inactive/Invalid: RETELL/SEI Restricted") ){
+        $Status ="Inactive/Invalid: RETELL/SEI R"
+    }
+    
+    return $Status
+}
+
+Function RenameLogOnError($logPath)
+{
+	if($error){		
+		Write-Host "*** An ERROR occured. Renaming Log file... ***"
+		$date = Get-Date -Format "MM-dd-yyyy-H-m-s"
+		$errorLogPath = Join-Path -Path $Config.logRootPath -ChildPath "ERROR_StaffLicenses_Log_$date.log"
+		#Rename-Item -Path $logPath -NewName $errorLogPath
+        Move-Item -Path $logPath -Destination $errorLogPath
+
+		return $errorLogPath
+	}
+}
+
+Function Clean20DayOldLogs()
+{
+	$limit = (Get-Date).AddDays(-20)
+	$path = "Logs"
+	Get-ChildItem -Path $path -Recurse -Force -Include *.log | Where-Object { !$_.PSIsContainer -and $_.CreationTime -lt $limit } | Remove-Item -Force
+}
+
+Function CopyErrorLogToDestination($errorLogPath){
+	if($error){	
+		$destination = "D:\\BPS Pub\\ftproot\\PeopleSoftFiles\\Logs\\"
+		Copy-Item $errorLogPath -Destination $destination
+		
+		#Clean files older than 5 days in the destination.
+		$limit = (Get-Date).AddDays(-5)
+		Get-ChildItem -Path $path -Recurse -Force -Include ERROR_StaffLicenses_Log_*.log | Where-Object { !$_.PSIsContainer -and $_.CreationTime -lt $limit } | Remove-Item -Force
+	}
 }
 
 Function Init()
 {   
+	$error.clear()
+	
     # Enable Logging
-    New-Item -ItemType Directory -Force -Path "Logs"
+    New-Item -ItemType Directory -Force -Path $Config.logRootPath
     $date = Get-Date -Format "MM-dd-yyyy-H-m-s"
-    $logPath = "Logs\\StaffLicenses_Log_$date.log"
+    $logPath = Join-Path -Path $Config.logRootPath -ChildPath  "StaffLicenses_Log_$date.log"
     Start-Transcript -Path $logPath
 
     Write-Host "*** Initializing Ed-Fi > Staff Certification CSV Processing. ***" -ForegroundColor Cyan
+    Write-Host "Cheking if the required permisions exists"
 
     Write-Host "Creating a Json Object"
     Create-Json
 
     Stop-Transcript
+	
+	$errorLogPath = RenameLogOnError $logPath
+	CopyErrorLogToDestination $errorLogPath
+	
+	Clean20DayOldLogs
 }
 # Execute\Init the task
 Init
